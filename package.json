@@ -1,11 +1,11 @@
 {
-  "name": "kids-ai-all-in",
+  "name": "emir-superman",
   "version": "1.0.0",
   "description": "AI Supervisor System mit Multi-Agent-Orchestrierung",
-  "main": "kids-ai-all-in/server.js",
+  "main": "emir-superman/server.js",
   "scripts": {
-    "start": "cd kids-ai-all-in && node server.js",
-    "dev": "cd kids-ai-all-in && node server.js"
+    "start": "cd emir-superman && node server.js",
+    "dev": "cd emir-superman && node server.js"
   },
   "keywords": ["ai", "supervisor", "multi-agent"],
   "author": "",
