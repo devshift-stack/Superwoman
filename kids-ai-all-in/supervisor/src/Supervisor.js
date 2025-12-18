@@ -7,6 +7,7 @@ const AgentRegistry = require('./AgentRegistry');
 const TaskQueue = require('./TaskQueue');
 const SessionManager = require('./SessionManager');
 const AgentCoordinator = require('./AgentCoordinator');
+const BetaFinalSystem = require('./knowledge-base/BetaFinalSystem');
 
 class Supervisor {
   constructor(config = {}) {
@@ -21,6 +22,7 @@ class Supervisor {
     this.taskQueue = new TaskQueue(this.config.redisUrl);
     this.sessionManager = new SessionManager(this.config.dbPath);
     this.coordinator = new AgentCoordinator(this);
+    this.knowledgeBase = new BetaFinalSystem();
 
     // State
     this.isInitialized = false;
@@ -42,6 +44,7 @@ class Supervisor {
       await this.sessionManager.initialize();
       await this.taskQueue.initialize();
       await this.agentRegistry.initialize();
+      await this.knowledgeBase.initialize();
 
       // Starte Task-Queue Worker
       await this.taskQueue.startWorker(this.handleTask.bind(this));
@@ -111,15 +114,38 @@ class Supervisor {
   }
 
   /**
+   * Sucht in Knowledge Base
+   */
+  async searchKnowledge(query, options = {}) {
+    return await this.knowledgeBase.search(query, options);
+  }
+
+  /**
+   * Speichert Recherche in Knowledge Base (Beta)
+   */
+  async storeResearch(text, source, metadata = {}) {
+    return await this.knowledgeBase.storeResearch(text, source, metadata);
+  }
+
+  /**
+   * Verifiziert Information (Beta → Final)
+   */
+  async verifyKnowledge(id, notes = '') {
+    return await this.knowledgeBase.verify(id, notes);
+  }
+
+  /**
    * Gibt Status des Supervisors zurück
    */
   async getStatus() {
+    const kbStats = await this.knowledgeBase.getStats();
     return {
       initialized: this.isInitialized,
       activeTasks: this.activeTasks.size,
       registeredAgents: this.agentRegistry.getAgentCount(),
       queueStatus: await this.taskQueue.getStatus(),
-      sessions: await this.sessionManager.getSessionCount()
+      sessions: await this.sessionManager.getSessionCount(),
+      knowledgeBase: kbStats
     };
   }
 
