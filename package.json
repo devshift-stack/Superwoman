@@ -7,7 +7,11 @@
     "start": "cd emir-superman && node server.js",
     "dev": "cd emir-superman && node server.js"
   },
-  "keywords": ["ai", "supervisor", "multi-agent"],
+  "keywords": [
+    "ai",
+    "supervisor",
+    "multi-agent"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
@@ -20,9 +24,9 @@
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "ioredis": "^5.8.2",
+    "joi": "^18.0.2",
     "openai": "^6.14.0",
     "sqlite3": "^5.1.7",
     "uuid": "^9.0.1"
   }
 }
-

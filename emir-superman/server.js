@@ -1,3 +1,4 @@
+
 /**
  * Express Server für AI Supervisor System
  * REST API für Supervisor, Agents, Tasks, Knowledge Base
@@ -7,6 +8,14 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const Supervisor = require('./supervisor/src/Supervisor');
+const errorHandler = require('./middleware/errorHandler');
+const supervisorCheck = require('./middleware/supervisorCheck');
+
+// Import new modular routes
+const agentRoutes = require('./routes/agents');
+const taskRoutes = require('./routes/tasks');
+const sessionRoutes = require('./routes/sessions');
+const knowledgeRoutes = require('./routes/knowledge');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -15,19 +24,17 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Supervisor Instance
-let supervisor = null;
-
 /**
  * Initialisiert Supervisor
  */
 async function initializeSupervisor() {
   try {
-    supervisor = new Supervisor({
+    const supervisor = new Supervisor({
       redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
       dbPath: process.env.DB_PATH || './data/sessions.db',
     });
     await supervisor.initialize();
+    app.set('supervisor', supervisor); // Make supervisor available to middleware
     console.log('✅ Supervisor initialisiert');
   } catch (error) {
     console.error('❌ Fehler beim Initialisieren des Supervisors:', error);
@@ -49,158 +56,30 @@ app.get('/health', (req, res) => {
   res.json({ status: 'healthy' });
 });
 
-// Supervisor Status
-app.get('/api/status', async (req, res) => {
+// API Routes
+const apiRouter = express.Router();
+apiRouter.use(supervisorCheck);
+
+// A route for supervisor status that doesn't fit in other categories
+apiRouter.get('/status', async (req, res, next) => {
   try {
-    if (!supervisor) {
-      return res.status(503).json({ error: 'Supervisor nicht initialisiert' });
-    }
-    const status = await supervisor.getStatus();
+    const status = await req.app.get('supervisor').getStatus();
     res.json(status);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    next(error);
   }
 });
 
-// Agent Management
-app.post('/api/agents/register', async (req, res) => {
-  try {
-    if (!supervisor) {
-      return res.status(503).json({ error: 'Supervisor nicht initialisiert' });
-    }
-    const agent = await supervisor.registerAgent(req.body);
-    res.json(agent);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+// Use modular routers
+apiRouter.use('/agents', agentRoutes);
+apiRouter.use('/tasks', taskRoutes);
+apiRouter.use('/sessions', sessionRoutes);
+apiRouter.use('/knowledge', knowledgeRoutes);
 
-app.get('/api/agents', async (req, res) => {
-  try {
-    if (!supervisor) {
-      return res.status(503).json({ error: 'Supervisor nicht initialisiert' });
-    }
-    const agents = supervisor.agentRegistry.getAllAgents();
-    res.json(agents);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Task Management
-app.post('/api/tasks', async (req, res) => {
-  try {
-    if (!supervisor) {
-      return res.status(503).json({ error: 'Supervisor nicht initialisiert' });
-    }
-    const taskId = await supervisor.addTask(req.body);
-    res.json({ taskId, status: 'queued' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.get('/api/tasks/:taskId', async (req, res) => {
-  try {
-    if (!supervisor) {
-      return res.status(503).json({ error: 'Supervisor nicht initialisiert' });
-    }
-    const task = supervisor.activeTasks.get(req.params.taskId);
-    if (!task) {
-      return res.status(404).json({ error: 'Task nicht gefunden' });
-    }
-    res.json(task);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Session Management
-app.post('/api/sessions', async (req, res) => {
-  try {
-    if (!supervisor) {
-      return res.status(503).json({ error: 'Supervisor nicht initialisiert' });
-    }
-    const { userId, metadata } = req.body;
-    const session = await supervisor.createSession(userId, metadata);
-    res.json(session);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.get('/api/sessions/:sessionId', async (req, res) => {
-  try {
-    if (!supervisor) {
-      return res.status(503).json({ error: 'Supervisor nicht initialisiert' });
-    }
-    const session = await supervisor.getSession(req.params.sessionId);
-    if (!session) {
-      return res.status(404).json({ error: 'Session nicht gefunden' });
-    }
-    res.json(session);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Knowledge Base
-app.post('/api/knowledge/search', async (req, res) => {
-  try {
-    if (!supervisor) {
-      return res.status(503).json({ error: 'Supervisor nicht initialisiert' });
-    }
-    const { query, options = {} } = req.body;
-    const results = await supervisor.searchKnowledge(query, options);
-    res.json(results);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.post('/api/knowledge/store', async (req, res) => {
-  try {
-    if (!supervisor) {
-      return res.status(503).json({ error: 'Supervisor nicht initialisiert' });
-    }
-    const { text, source, metadata = {} } = req.body;
-    const id = await supervisor.storeResearch(text, source, metadata);
-    res.json({ id, status: 'stored' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.post('/api/knowledge/verify/:id', async (req, res) => {
-  try {
-    if (!supervisor) {
-      return res.status(503).json({ error: 'Supervisor nicht initialisiert' });
-    }
-    const { notes = '' } = req.body;
-    const verified = await supervisor.verifyKnowledge(req.params.id, notes);
-    res.json({ verified, id: req.params.id });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.get('/api/knowledge/stats', async (req, res) => {
-  try {
-    if (!supervisor) {
-      return res.status(503).json({ error: 'Supervisor nicht initialisiert' });
-    }
-    const stats = await supervisor.knowledgeBase.getStats();
-    res.json(stats);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+app.use('/api', apiRouter);
 
 // Error Handling
-app.use((err, req, res, next) => {
-  console.error('❌ Server Fehler:', err);
-  res.status(500).json({ error: 'Interner Serverfehler' });
-});
+app.use(errorHandler);
 
 // Start Server
 async function start() {
@@ -221,6 +100,7 @@ async function start() {
 // Graceful Shutdown
 process.on('SIGTERM', async () => {
   console.log('🛑 SIGTERM empfangen, beende Server...');
+  const supervisor = app.get('supervisor');
   if (supervisor) {
     await supervisor.shutdown();
   }
@@ -229,6 +109,7 @@ process.on('SIGTERM', async () => {
 
 process.on('SIGINT', async () => {
   console.log('🛑 SIGINT empfangen, beende Server...');
+  const supervisor = app.get('supervisor');
   if (supervisor) {
     await supervisor.shutdown();
   }
