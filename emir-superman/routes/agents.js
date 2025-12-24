@@ -58,4 +58,36 @@ router.get('/', async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/agents/{id}:
+ *   delete:
+ *     summary: Delete an agent
+ *     tags: [Agents]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The agent ID to delete
+ *     responses:
+ *       200:
+ *         description: Agent deleted successfully
+ *       404:
+ *         description: Agent not found
+ */
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const deleted = await req.app.get('supervisor').agentRegistry.unregister(req.params.id);
+    if (deleted) {
+      res.json({ success: true, message: `Agent ${req.params.id} deleted` });
+    } else {
+      res.status(404).json({ success: false, message: 'Agent not found' });
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;

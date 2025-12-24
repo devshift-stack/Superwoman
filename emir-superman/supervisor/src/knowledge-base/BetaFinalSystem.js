@@ -122,6 +122,14 @@ class BetaFinalSystem {
     await this.initialize();
     return await this.pinecone.getStats();
   }
+
+  /**
+   * Löscht einen Knowledge-Eintrag
+   */
+  async delete(id) {
+    await this.initialize();
+    return await this.pinecone.delete(id);
+  }
 }
 
 module.exports = BetaFinalSystem;

@@ -106,4 +106,32 @@ router.get('/stats', async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/knowledge/{id}:
+ *   delete:
+ *     summary: Delete a knowledge entry
+ *     tags: [Knowledge]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The knowledge entry ID to delete
+ *     responses:
+ *       200:
+ *         description: Knowledge entry deleted successfully
+ *       500:
+ *         description: Error deleting knowledge entry
+ */
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const deleted = await req.app.get('supervisor').knowledgeBase.delete(req.params.id);
+    res.json({ success: deleted, message: `Knowledge entry ${req.params.id} deleted` });
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;
