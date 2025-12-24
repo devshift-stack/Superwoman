@@ -23,6 +23,7 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use(express.static(__dirname)); // Serve static files (dashboard.html, etc.)
 
 /**
  * Initialisiert Supervisor
@@ -54,6 +55,11 @@ app.get('/', (req, res) => {
 
 app.get('/health', (req, res) => {
   res.json({ status: 'healthy' });
+});
+
+// Dashboard route
+app.get('/dashboard', (req, res) => {
+  res.sendFile(__dirname + '/dashboard.html');
 });
 
 // API Routes
